@@ -1,0 +1,7 @@
+<a href="/users/new">Новый пользователь </a>
+
+<?php foreach ($users as $user): ?>
+    <h3>
+        <?= htmlspecialchars($user->name) ?>  <?= htmlspecialchars($user->mail) ?>
+    </h3>
+<?php endforeach ?>
