@@ -6,24 +6,31 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
 use DI\Container;
-
 use function Symfony\Component\String\s;
+session_start();
 
 $users = json_decode(file_get_contents('test.txt'));;
 //print_r($users);
 $availableIds = array_map(fn($user) => $user->id, $users);
 //print_r($availableIds);
 
+
+
 $container = new Container();
 $container->set('renderer', function () {
     // Параметром передается базовая директория, в которой будут храниться шаблоны
     return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates');
 });
-$app = AppFactory::createFromContainer($container);
+$container->set('flash', function () {
+    return new \Slim\Flash\Messages();
+});
+AppFactory::setContainer($container);
+
+$app = AppFactory::create();
 $app->addErrorMiddleware(true, true, true);
 
 $app->get('/', function ($request, $response) {
-    $response->getBody()->write('<a href="/users">пользователи </a>');
+    $response->getBody()->write('<a href="/users">Пользователи </a>');
     return $response;
     // Благодаря пакету slim/http этот же код можно записать короче
     // return $response->write('Welcome to Slim!');
@@ -32,8 +39,10 @@ $app->get('/', function ($request, $response) {
 
 
 $app->get('/users', function ($request, $response) use ($users) {
-
+    //flash message
+    $flash = $this->get('flash')->getMessages();
     $params = [
+        'flash' => $flash,
         'users' => $users
     ];
     return $this->get('renderer')->render($response, 'users/index.phtml', $params);
@@ -70,6 +79,8 @@ $app->post('/users', function ($request, $response) use ($users, $router) {
     $users[] = $user;
     $encodedUsers = json_encode($users);
     file_put_contents('test.txt', $encodedUsers);
+    //flash message
+    $this->get('flash')->addMessage('success', 'ДОБАВЛЕН НОВЫЙ ПОЛЬЗОВАТЕЛЬ');
     return $response->withRedirect($router->urlFor('users'));
 });
 
