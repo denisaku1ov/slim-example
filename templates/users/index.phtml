@@ -1,4 +1,5 @@
-<a href="/users/new">Новый пользователь </a>
+<div><a href="/users/new">Новый пользователь </a></div>
+<div><a href="/">main</a></div>
 <style>
     table {
         table-layout: fixed; /* Фиксированная ширина ячеек */
@@ -22,7 +23,8 @@
             <?= htmlspecialchars($user->id) ?>
         </td>
         <td>
-            <?= htmlspecialchars($user->name) ?>
+            <a href="/users/<?= htmlspecialchars($user->id) ?>"><?= htmlspecialchars($user->name) ?></a>
+
         </td>
         <td>
             <?= htmlspecialchars($user->mail) ?>
@@ -30,3 +32,8 @@
     </tr>
 </table>
 <?php endforeach ?>
+
+<!--Переключение между страницами -->
+<div>
+    <a href="?page=<?= $page < 2 ? 1 : $page - 1 ?>">пред</a> <a href="?page=<?= $page + 1 ?>">след</a>
+</div>

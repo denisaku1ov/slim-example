@@ -9,9 +9,9 @@ use DI\Container;
 use function Symfony\Component\String\s;
 session_start();
 
-$users = json_decode(file_get_contents('test.txt'));;
+$users = json_decode(file_get_contents('users.json'));;
 //print_r($users);
-$availableIds = array_map(fn($user) => $user->id, $users);
+
 //print_r($availableIds);
 
 
@@ -41,9 +41,15 @@ $app->get('/', function ($request, $response) {
 $app->get('/users', function ($request, $response) use ($users) {
     //flash message
     $flash = $this->get('flash')->getMessages();
+    //Переключение между страницами
+    $per = 5;
+    $page = $request->getQueryParam('page', 1);
+    $offset = ($page - 1) * $per;
+    $sliceOfUsers = array_slice($users, $offset, $per);
     $params = [
         'flash' => $flash,
-        'users' => $users
+        'users' => $sliceOfUsers,
+        'page' => $page
     ];
     return $this->get('renderer')->render($response, 'users/index.phtml', $params);
 })->setName('users');
@@ -58,29 +64,40 @@ $app->get('/courses/{id}', function ($request, $response, array $args) {
 
 
 $app->get('/users/new', function ($request, $response) use ($users) {
-    $id = count($users);
+    if (count($users) === 0) {
+        $id = 1;
+    } else {
+        $lastUser = $users[count($users) -1];
+        $lastUserId = $lastUser->id;
+        $id = $lastUserId + 1;
+    }
     $params = [
         'user' => ['name' => '', 'mail' => '', 'id' => $id],
     ];
     return $this->get('renderer')->render($response, 'users/new.phtml', $params);
 });
 
-$app->get('/users/{id}', function ($request, $response, array $args) use ($availableIds) {
+$app->get('/users/{id}', function ($request, $response, array $args) use ($users) {
     $id = $args['id'];
+    $availableIds = array_map(fn($user) => $user->id, $users);
     if (in_array($id, $availableIds)) {
-        return $response->write("ID ПОЛЬЗОВАТЕЛЯ: {$id}");
+        $user = collect($users)->firstWhere('id', $id);
+        $params = [
+            'user' => $user
+        ];
+        return $this->get('renderer')->render($response, 'users/show.phtml', $params);
     }
-    return $response->withStatus(404)->write("<a href=\"/users/new\">Новый пользователь </a> <h1>ОШИБКА 404</h1>");
-});
+    return $response->withStatus(404)->write("<a href=\"/users/new\">Новый пользователь </a> <h1>ТАКОГО ПОЛЬЗОВАТЕЛЯ НЕ СУЩЕСТВУЕТ</h1>");
+})->setName('user');
 
 $app->post('/users', function ($request, $response) use ($users, $router) {
     $user = $request->getParsedBodyParam('user');
     print_r($user);
     $users[] = $user;
     $encodedUsers = json_encode($users);
-    file_put_contents('test.txt', $encodedUsers);
+    file_put_contents('users.json', $encodedUsers);
     //flash message
-    $this->get('flash')->addMessage('success', 'ДОБАВЛЕН НОВЫЙ ПОЛЬЗОВАТЕЛЬ');
+    $this->get('flash')->addMessage('success', '<h3>ДОБАВЛЕН НОВЫЙ ПОЛЬЗОВАТЕЛЬ</h3>');
     return $response->withRedirect($router->urlFor('users'));
 });
 
