@@ -11,7 +11,20 @@ session_start();
 
 $users = json_decode(file_get_contents('users.json'));;
 //print_r($users);
-
+function validate($user)
+{
+    $errors = [];
+    if (empty($user['name'])) {
+        $errors['name'] = "Введите имя";
+    }
+    if (empty($user['mail'])) {
+        $errors['mail'] = "Введите email";
+    }
+    if (empty($user['id'])) {
+        $errors['id'] = "Can't be blank";
+    }
+    return $errors;
+}
 //print_r($availableIds);
 
 
@@ -42,7 +55,7 @@ $app->get('/users', function ($request, $response) use ($users) {
     //flash message
     $flash = $this->get('flash')->getMessages();
     //Переключение между страницами
-    $per = 5;
+    $per = 10;
     $page = $request->getQueryParam('page', 1);
     $offset = ($page - 1) * $per;
     $sliceOfUsers = array_slice($users, $offset, $per);
@@ -72,6 +85,7 @@ $app->get('/users/new', function ($request, $response) use ($users) {
         $id = $lastUserId + 1;
     }
     $params = [
+        'errors' => [],
         'user' => ['name' => '', 'mail' => '', 'id' => $id],
     ];
     return $this->get('renderer')->render($response, 'users/new.phtml', $params);
@@ -91,14 +105,23 @@ $app->get('/users/{id}', function ($request, $response, array $args) use ($users
 })->setName('user');
 
 $app->post('/users', function ($request, $response) use ($users, $router) {
+
     $user = $request->getParsedBodyParam('user');
-    print_r($user);
-    $users[] = $user;
-    $encodedUsers = json_encode($users);
-    file_put_contents('users.json', $encodedUsers);
-    //flash message
-    $this->get('flash')->addMessage('success', '<h3>ДОБАВЛЕН НОВЫЙ ПОЛЬЗОВАТЕЛЬ</h3>');
-    return $response->withRedirect($router->urlFor('users'));
+    $errors = validate($user);
+    if (count($errors) === 0) {
+        $users[] = $user;
+        $encodedUsers = json_encode($users);
+        file_put_contents('users.json', $encodedUsers);
+        //flash message
+        $this->get('flash')->addMessage('success', '<h3>ДОБАВЛЕН НОВЫЙ ПОЛЬЗОВАТЕЛЬ</h3>');
+        return $response->withRedirect($router->urlFor('users'));
+    }
+    $params = [
+        'user' => $user,
+        'errors' => $errors
+    ];
+    return $this->get('renderer')
+        ->render($response->withStatus(422), 'users/new.phtml', $params);
 });
 
 
